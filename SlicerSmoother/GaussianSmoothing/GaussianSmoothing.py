@@ -7,7 +7,6 @@ import logging
 #
 # GaussianSmoothing
 #
-
 class GaussianSmoothing(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
@@ -25,12 +24,11 @@ class GaussianSmoothing(ScriptedLoadableModule):
     self.parent.acknowledgementText = """
     Developed by Zachary Harmany at UC Davis.
     """
-    
+
 
 #
 # GaussianSmoothingWidget
 #
-
 class GaussianSmoothingWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
@@ -84,13 +82,13 @@ class GaussianSmoothingWidget(ScriptedLoadableModuleWidget):
     #
     # Smoothing amount
     #
-    self.imageThresholdSliderWidget = ctk.ctkSliderWidget()
-    self.imageThresholdSliderWidget.singleStep = 0.1
-    self.imageThresholdSliderWidget.minimum = 0
-    self.imageThresholdSliderWidget.maximum = 20
-    self.imageThresholdSliderWidget.value = 1.0
-    self.imageThresholdSliderWidget.setToolTip("Select the standard deviation of the Gaussian smoothing kernel (in voxels).")
-    parametersFormLayout.addRow("Smoothing amount", self.imageThresholdSliderWidget)
+    self.imageSmoothingAmountSliderWidget = ctk.ctkSliderWidget()
+    self.imageSmoothingAmountWidget.singleStep = 0.1
+    self.imageSmoothingAmountWidget.minimum = 0
+    self.imageSmoothingAmountWidget.maximum = 20
+    self.imageSmoothingAmountWidget.value = 1.0
+    self.imageSmoothingAmountWidget.setToolTip("Select the standard deviation of the Gaussian smoothing kernel (in voxels).")
+    parametersFormLayout.addRow("Smoothing amount", self.imageSmoothingAmountWidget)
 
     #
     # Check box to trigger taking screen shots for later use in tutorials
@@ -128,13 +126,13 @@ class GaussianSmoothingWidget(ScriptedLoadableModuleWidget):
   def onApplyButton(self):
     logic = GaussianSmoothingLogic()
     enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
-    imageThreshold = self.imageThresholdSliderWidget.value
-    logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), imageThreshold, enableScreenshotsFlag)
+    smoothingAmount = self.imageSmoothingAmountWidget.value
+    logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), smoothingAmount, enableScreenshotsFlag)
+
 
 #
 # GaussianSmoothingLogic
 #
-
 class GaussianSmoothingLogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual
   computation done by your module.  The interface
@@ -209,7 +207,7 @@ class GaussianSmoothingLogic(ScriptedLoadableModuleLogic):
     annotationLogic = slicer.modules.annotations.logic()
     annotationLogic.CreateSnapShot(name, description, type, 1, imageData)
 
-  def run(self, inputVolume, outputVolume, imageThreshold, enableScreenshots=0):
+  def run(self, inputVolume, outputVolume, smoothingAmount, enableScreenshots=0):
     """
     Run the actual algorithm
     """
@@ -221,7 +219,11 @@ class GaussianSmoothingLogic(ScriptedLoadableModuleLogic):
     logging.info('Processing started')
 
     # Compute the thresholded output volume using the Threshold Scalar Volume CLI module
-    cliParams = {'InputVolume': inputVolume.GetID(), 'OutputVolume': outputVolume.GetID(), 'ThresholdValue' : imageThreshold, 'ThresholdType' : 'Above'}
+    cliParams = {
+        'InputVolume': inputVolume.GetID(),
+        'OutputVolume': outputVolume.GetID(),
+        'ThresholdValue' : smoothingAmount,
+        'ThresholdType' : 'Above'}
     cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True)
 
     # Capture screenshot
