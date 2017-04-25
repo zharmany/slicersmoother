@@ -82,7 +82,7 @@ class GaussianSmoothingWidget(ScriptedLoadableModuleWidget):
     #
     # Smoothing amount
     #
-    self.imageSmoothingAmountSliderWidget = ctk.ctkSliderWidget()
+    self.imageSmoothingAmountWidget = ctk.ctkSliderWidget()
     self.imageSmoothingAmountWidget.singleStep = 0.1
     self.imageSmoothingAmountWidget.minimum = 0
     self.imageSmoothingAmountWidget.maximum = 20
