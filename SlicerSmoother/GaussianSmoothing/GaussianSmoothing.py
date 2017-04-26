@@ -3,6 +3,7 @@ import unittest
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
+import numpy as np
 
 #
 # GaussianSmoothing
@@ -207,6 +208,38 @@ class GaussianSmoothingLogic(ScriptedLoadableModuleLogic):
     annotationLogic = slicer.modules.annotations.logic()
     annotationLogic.CreateSnapShot(name, description, type, 1, imageData)
 
+  def _gaussianKernel(self, kernelSize=[11,11,11], sigma=1):
+    """
+    Returns a 3D Gaussian kernel array,
+    Normalized to sum to one.
+    """
+
+    x = np.arange(0, kernelSize[0], 1, dtype='float').reshape(kernelSize[0], 1, 1)
+    y = np.arange(0, kernelSize[1], 1, dtype='float').reshape(1, kernelSize[1], 1)
+    z = np.arange(0, kernelSize[2], 1, dtype='float').reshape(1, 1, kernelSize[2])
+    x -= (kernelSize[0]-1)/2
+    y -= (kernelSize[1]-1)/2
+    z -= (kernelSize[2]-1)/2
+
+    kernel = np.exp(- (x**2 + y**2 + z**2) / (2 * sigma**2))
+    kernel = kernel/kernel.sum()
+    kernel = np.fft.fftshift(kernel, axes=(0,1,2))
+
+    return kernel
+
+  def _blurImage(self, x, h):
+    """
+    Blurs the image x with the function h using FFTs.
+    """
+    x_fft = np.fft.fftn(x, axes=(0,1,2))
+    h_fft = np.fft.fftn(h, axes=(0,1,2))
+    y_fft = x_fft * h_fft
+    y = np.real(np.fft.ifftn(y_fft, axes=(0,1,2)))
+    return y
+
+
+
+
   def run(self, inputVolume, outputVolume, smoothingAmount, enableScreenshots=0):
     """
     Run the actual algorithm
@@ -218,13 +251,22 @@ class GaussianSmoothingLogic(ScriptedLoadableModuleLogic):
 
     logging.info('Processing started')
 
-    # Compute the thresholded output volume using the Threshold Scalar Volume CLI module
-    cliParams = {
-        'InputVolume': inputVolume.GetID(),
-        'OutputVolume': outputVolume.GetID(),
-        'ThresholdValue' : smoothingAmount,
-        'ThresholdType' : 'Above'}
-    cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True)
+    # data = inputVolume.GetImageData().toArray()
+    data = slicer.util.array(inputVolume.GetID())
+
+    temp = self._blurImage(data, self._gaussianKernel(data.shape, smoothingAmount))
+
+    data[:] = temp[:]
+
+    inputVolume.Modified()
+
+#    # Compute the thresholded output volume using the Threshold Scalar Volume CLI module
+#    cliParams = {
+#        'InputVolume': inputVolume.GetID(),
+#        'OutputVolume': outputVolume.GetID(),
+#        'ThresholdValue' : smoothingAmount,
+#        'ThresholdType' : 'Above'}
+#    cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True)
 
     # Capture screenshot
     if enableScreenshots:
